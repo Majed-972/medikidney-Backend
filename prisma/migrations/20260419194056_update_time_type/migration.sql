@@ -1,0 +1,4 @@
+-- AlterTable
+ALTER TABLE "DialysisSession" ALTER COLUMN "date" SET DATA TYPE DATE,
+ALTER COLUMN "start_time" SET DATA TYPE TIME,
+ALTER COLUMN "end_time" SET DATA TYPE TIME;

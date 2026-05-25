@@ -1,0 +1,512 @@
+generator client {
+  provider = "prisma-client-js"
+  
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  user_id       Int            @id @default(autoincrement())
+  username      String         @unique
+  password      String
+  must_change_password Boolean @default(false)
+  role          Role
+  canAccess    Boolean     @default(true)
+  created_by_id Int?
+  doctor        Doctor?
+  labTech       LabSpecialist?
+  nurse         Nurse?
+  nutritionist  Nutritionist?
+  patient       Patient?
+  pharmacist    Pharmacist?
+  radTech       Radiologist?
+  created_by    User?          @relation("UserCreator", fields: [created_by_id], references: [user_id])
+  created_users User[]         @relation("UserCreator")
+  passReset passwordReset?
+}
+
+model Patient {
+  patient_id            Int                 @id @default(autoincrement())
+  user_id               Int                 @unique
+  national_id           String              @unique @db.VarChar(9)
+  full_name             String
+  gender                String
+  birth_date            DateTime 
+  phone                 String     @unique         @db.VarChar(10)
+  email                 String?    @unique
+  emergency_contact     String              @db.VarChar(10)
+  blood_type            String?
+  chronic_diseases      String?
+  allergies             String?
+  medical_history_notes String?
+  smoking_status        Boolean             @default(false)
+  notes                 String?
+  dialysisSchedules     DialysisSchedule[]
+  dialysisSessions      DialysisSession[]
+  doctorAppointments    DoctorAppointment[]
+  tests                 MedicalTest[]
+  dietPrograms          NutritionProgram[]
+  user                  User                @relation(fields: [user_id], references: [user_id] ,onDelete:Cascade)
+  prescriptions         Prescription[]
+  images                RadiologyImage[]
+  bookingAccesses       DoctorPatientBookingAccess[]
+  deviceTokens          PatientDeviceToken[]
+  notifications         NotificationLog[]
+}
+
+model Doctor {
+  doctor_id         Int                 @id @default(autoincrement())
+  user_id           Int                 @unique
+  isHead            Boolean             @default(false)
+  full_name         String
+  national_id       String              @unique @db.VarChar(9)
+  specialty         String
+  phone             String       @unique       @db.VarChar(10)
+  email             String       @unique
+  dialysisSchedules DialysisSchedule[]
+  user              User                @relation(fields: [user_id], references: [user_id],onDelete:Cascade)
+  appointments      DoctorAppointment[]
+  tests             MedicalTest[]
+  prescriptions     Prescription[]
+  radiologyRequests RadiologyImage[]
+  doctorSchedules   DoctorSchedule[]
+  bookingAccesses   DoctorPatientBookingAccess[]
+}
+
+model Nurse {
+  nurse_id    Int               @id @default(autoincrement())
+  user_id     Int               @unique
+  full_name   String
+  national_id           String              @unique @db.VarChar(9)
+  phone                 String       @unique      @db.VarChar(10)
+  email                 String       @unique
+  sessions    DialysisSession[]
+  vitalSigns SessionVitalSigns[]
+  medications SessionMedication[]
+  dialysisSettings SessionDialysisSettings[]
+  user        User              @relation(fields: [user_id], references: [user_id],onDelete:Cascade)
+  assignments ScheduleAssignment[]
+}
+
+model LabSpecialist {
+  lab_id      Int           @id @default(autoincrement())
+  user_id     Int           @unique
+  full_name   String
+  national_id           String              @unique @db.VarChar(9)
+ phone                 String    @unique          @db.VarChar(10)
+ email                 String    @unique
+  user        User          @relation(fields: [user_id], references: [user_id],onDelete:Cascade)
+  tests       MedicalTest[]
+}
+
+model Radiologist {
+  rad_id              Int              @id @default(autoincrement())
+  user_id             Int              @unique
+  full_name           String
+  national_id         String              @unique @db.VarChar(9)
+  phone               String         @unique     @db.VarChar(10)
+  email               String         @unique
+  user                User             @relation(fields: [user_id], references: [user_id],onDelete:Cascade)
+  images              RadiologyImage[]
+}
+
+model Nutritionist {
+  nutritionist_id Int                @id @default(autoincrement())
+  user_id         Int                @unique
+  full_name       String
+  national_id           String              @unique @db.VarChar(9)
+  phone                 String   @unique           @db.VarChar(10)
+  email                 String   @unique
+  programs        NutritionProgram[]
+  user            User               @relation(fields: [user_id], references: [user_id], onDelete:Cascade)
+}
+
+model Pharmacist {
+  pharmacist_id Int            @id @default(autoincrement())
+  user_id       Int            @unique
+  full_name     String
+  national_id           String              @unique @db.VarChar(9)
+  phone                 String              @db.VarChar(10)
+  email                 String         @unique
+  user          User           @relation(fields: [user_id], references: [user_id] ,onDelete:Cascade)
+  prescriptions Prescription[]
+}
+
+model RadiologyImage {
+  image_id       Int                    @id @default(autoincrement())
+  patient_id     Int
+  doctor_id      Int?
+  radiologist_id Int?
+  image_path     String?
+  image_type     String
+  description    String?
+  status         RadiologyRequestStatus @default(PENDING)
+  seen           Boolean                @default(false)
+  created_at     DateTime               @default(now())
+  completed_at   DateTime?
+  patient        Patient                @relation(fields: [patient_id], references: [patient_id])
+  doctor         Doctor?                @relation(fields: [doctor_id], references: [doctor_id])
+  radiologist    Radiologist?           @relation(fields: [radiologist_id], references: [rad_id])
+}
+
+model MedicalTest {
+  test_id           Int           @id @default(autoincrement())
+  patient_id        Int
+  doctor_id         Int
+  lab_specialist_id Int?
+  test_type         String
+  description       String?
+  seen              Boolean       @default(false)
+  result            String?
+  date_requested    DateTime
+  date_completed    DateTime?
+  doctor            Doctor        @relation(fields: [doctor_id], references: [doctor_id])
+  lab_specialist    LabSpecialist? @relation(fields: [lab_specialist_id], references: [lab_id])
+  patient           Patient       @relation(fields: [patient_id], references: [patient_id])
+}
+
+
+
+model Prescription {
+  prescription_id Int          @id @default(autoincrement())
+  doctor_id       Int
+  patient_id      Int
+  pharmacist_id   Int?
+  date_prescribed DateTime     @default(now())
+  details         DrugDetail[]
+  doctor          Doctor       @relation(fields: [doctor_id], references: [doctor_id])
+  patient         Patient      @relation(fields: [patient_id], references: [patient_id])
+  pharmacist      Pharmacist?  @relation(fields: [pharmacist_id], references: [pharmacist_id])
+}
+
+model DrugDetail {
+  drug_id         Int          @id @default(autoincrement())
+  prescription_id Int
+  drug_name       String
+  instructions    String?
+  is_active       Boolean      @default(true)
+  status          Boolean      @default(false)
+  prescription    Prescription @relation(fields: [prescription_id], references: [prescription_id])
+}
+model DialysisSession {
+  session_id            Int              @id @default(autoincrement())
+  patient_id            Int
+  nurse_id              Int
+  schedule_id           Int
+  date                  DateTime @db.Date
+  start_time            DateTime    @db.Time
+  end_time              DateTime?   @db.Time 
+  weight_before         Float
+  weight_after          Float? 
+  fluid_removed         Float?
+  blood_pressure_before String?
+  blood_pressure_after  String?
+  notes                 String?
+  created_at            DateTime         @default(now())
+  updated_at            DateTime         @updatedAt
+  status                DialysisSessionStatus @default(PENDING)
+  nurse                 Nurse            @relation(fields: [nurse_id], references: [nurse_id])
+  patient               Patient          @relation(fields: [patient_id], references: [patient_id])
+  schedule              DialysisSchedule @relation(fields: [schedule_id], references: [schedule_id], onDelete: Cascade)
+  vitalSigns            SessionVitalSigns[]
+  medications           SessionMedication[]
+  dialysisSettings      SessionDialysisSettings[]
+  symptoms              SessionSymptom[]
+   @@unique([schedule_id, date])
+}
+
+model DialysisSchedule {
+  schedule_id       Int               @id @default(autoincrement())
+  patient_id        Int
+  created_by_doctor Int
+  weekday           Weekday  
+  machine_number    Int
+  shift_number      Int
+  doctor            Doctor            @relation(fields: [created_by_doctor], references: [doctor_id])
+  patient           Patient           @relation(fields: [patient_id], references: [patient_id])
+  sessions          DialysisSession[]
+  assignments       ScheduleAssignment[]
+   @@unique([patient_id, weekday])
+  @@unique([weekday, shift_number, machine_number])
+}
+
+model DialysisMachine {
+  machine_number         Int @id
+  is_under_maintenance   Boolean @default(false)
+}
+
+model DialysisUnitConfig {
+  id                 Int @id @default(1)
+  active_shift_count Int @default(4)
+}
+
+enum DialysisSessionStatus {
+  PENDING
+  COMPLETED
+  MISSED
+  CANCELLED
+}
+
+enum RadiologyRequestStatus {
+  PENDING
+  COMPLETED
+}
+enum SymptomType {
+  LOW_BP          // هبوط ضغط
+  CRAMPS          // تشنجات
+  NAUSEA          // غثيان
+  HEADACHE        // صداع
+  CHEST_PAIN      // ألم صدر
+  ITCHING         // حكة
+  DIZZINESS       // دوار
+  MUSCLE_PAIN     // ألم عضلي
+  OTHER
+}
+
+enum SeverityLevel {
+  MILD
+  MODERATE
+  SEVERE
+}
+
+model DoctorAppointment {
+  appointment_id Int      @id @default(autoincrement())
+  doctor_id      Int
+  patient_id     Int?
+  appt_date      DateTime @db.Date
+  appt_time      DateTime @db.Time
+  is_booked      Boolean  @default(false)
+  visit_reason   String?
+  doctor         Doctor   @relation(fields: [doctor_id], references: [doctor_id])
+  patient        Patient? @relation(fields: [patient_id], references: [patient_id])
+  appointment_type AppointmentType @default(CLINIC_REVIEW)
+  status         AppointmentStatus @default(SCHEDULED)
+  diagnosis        String?
+  treatment_plan   String?
+  medications      String?
+  notes            String?
+}
+
+model DoctorPatientBookingAccess {
+  booking_access_id          Int      @id @default(autoincrement())
+  doctor_id                  Int
+  patient_id                 Int
+  consecutive_no_show_count  Int      @default(0)
+  is_booking_blocked         Boolean  @default(false)
+  blocked_at                 DateTime?
+  created_at                 DateTime @default(now())
+  updated_at                 DateTime @updatedAt
+
+  doctor  Doctor  @relation(fields: [doctor_id], references: [doctor_id], onDelete: Cascade)
+  patient Patient @relation(fields: [patient_id], references: [patient_id], onDelete: Cascade)
+
+  @@unique([doctor_id, patient_id])
+}
+
+model DoctorSchedule {
+  schedule_id Int    @id @default(autoincrement())
+  doctor_id   Int
+  weekday     Weekday
+  start_time  DateTime @db.Time
+  end_time    DateTime @db.Time
+  is_active   Boolean  @default(true)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  
+  doctor      Doctor   @relation(fields: [doctor_id], references: [doctor_id], onDelete: Cascade)
+  
+  @@unique([doctor_id, weekday])
+}
+// ==================== NEW TABLES FOR DIALYSIS SESSION DETAILS ====================
+
+// Table 1: Vital Signs for each session (can have multiple readings)
+model SessionVitalSigns {
+  vital_id Int @id @default(autoincrement())
+  session_id Int
+  recorded_by_nurse_id Int
+  recorded_at DateTime @default(now())
+  
+  // Blood Pressure (منفصل)
+  systolic Int?           // SYS مثلاً 120
+  diastolic Int?          // DIA مثلاً 80
+  
+  // Other Vitals
+  pulse Int?              // النبض مثلاً 72
+  temperature Float?      // الحرارة مثلاً 36.5
+  oxygen_saturation Int?  // O2 مثلاً 98%
+  
+  session DialysisSession @relation(fields: [session_id], references: [session_id], onDelete: Cascade)
+  nurse Nurse @relation(fields: [recorded_by_nurse_id], references: [nurse_id])
+  
+  @@index([session_id])
+  @@index([recorded_at])
+}
+
+// Table 2: Medications given during session
+model SessionMedication {
+  med_id Int @id @default(autoincrement())
+  session_id Int
+  administered_by_nurse_id Int
+  
+  // Medication details
+  medication_name String       // HEPARIN, EPO, IRON, SALINE, etc
+  dosage Float
+  unit String                 // IU, mg, ml, etc
+  administered_at DateTime @default(now())
+  notes String?
+  
+  session DialysisSession @relation(fields: [session_id], references: [session_id], onDelete: Cascade)
+  nurse Nurse @relation(fields: [administered_by_nurse_id], references: [nurse_id])
+  
+  @@index([session_id])
+  @@index([administered_at])
+}
+
+// Table 3: Dialysis Machine Settings (can change during session)
+model SessionDialysisSettings {
+  setting_id Int @id @default(autoincrement())
+  session_id Int
+  recorded_by_nurse_id Int
+  recorded_at DateTime @default(now())
+  
+  // Machine settings
+  blood_flow_rate Int?           // ml/min مثلاً 200
+  dialysate_flow Int?            // ml/min مثلاً 500
+  ultrafiltration_rate Float?    // كام سائل يتم سحبه
+  
+  session DialysisSession @relation(fields: [session_id], references: [session_id], onDelete: Cascade)
+  nurse Nurse @relation(fields: [recorded_by_nurse_id], references: [nurse_id])
+  
+  @@index([session_id])
+  @@index([recorded_at])
+}
+
+// Table 4: Symptoms and Events during session (checkboxes)
+model SessionSymptom {
+  symptom_id Int @id @default(autoincrement())
+  session_id Int
+  
+  symptom_type SymptomType
+  severity SeverityLevel @default(MILD)
+  occurred_at DateTime @default(now())
+  notes String?
+  
+  session DialysisSession @relation(fields: [session_id], references: [session_id], onDelete: Cascade)
+  
+  @@index([session_id])
+  @@index([occurred_at])
+}
+
+// ==================== END OF DIALYSIS SESSION DETAILS ====================
+
+enum AppointmentType {
+  DIALYSIS
+  CLINIC_REVIEW
+  FOLLOW_UP
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+
+model NutritionProgram {
+  program_id      Int          @id @default(autoincrement())
+  patient_id      Int
+  nutritionist_id Int
+  title           String
+  description     String?
+  start_date      DateTime  @db.Date
+  end_date        DateTime? @db.Date
+  allowed_items   String?
+  forbidden_items String?
+  breakfast       String?
+  lunch            String?
+  dinner           String?
+  meal_notes      String?
+  nutritionist    Nutritionist @relation(fields: [nutritionist_id], references: [nutritionist_id])
+  patient         Patient      @relation(fields: [patient_id], references: [patient_id])
+}
+
+model passwordReset {
+  reset_id       Int       @id @default(autoincrement())
+  user_id        Int       @unique
+  email          String
+  otp_code       String
+  is_verified    Boolean   @default(false)
+  created_at     DateTime  @default(now())
+  expires_at     DateTime
+  user           User      @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+}
+
+// ==================== NOTIFICATIONS ====================
+
+model PatientDeviceToken {
+  token_id       Int       @id @default(autoincrement())
+  patient_id     Int
+  device_token   String    @unique
+  device_name    String?
+  is_active      Boolean   @default(true)
+  created_at     DateTime  @default(now())
+  updated_at     DateTime  @updatedAt
+  patient        Patient   @relation(fields: [patient_id], references: [patient_id], onDelete: Cascade)
+  
+  @@unique([patient_id, device_token])
+  @@index([patient_id])
+}
+
+model NotificationLog {
+  notification_id   Int       @id @default(autoincrement())
+  patient_id        Int
+  notification_type String    // TEST_RESULT, RADIOLOGY, PRESCRIPTION, SESSION_NO_WEIGHT
+  title             String
+  message           String
+  related_id        Int?      // test_id, image_id, prescription_id, session_id
+  is_read           Boolean   @default(false)
+  created_at        DateTime  @default(now())
+  patient           Patient   @relation(fields: [patient_id], references: [patient_id], onDelete: Cascade)
+  
+  @@index([patient_id])
+  @@index([is_read])
+  @@index([created_at])
+}
+
+// ==================== END NOTIFICATIONS ====================
+
+enum Role {
+  DOCTOR
+  NURSE
+  PATIENT
+  PHARMACIST
+  NUTRITIONIST
+  RADIOLOGIST
+  LAB_TECH
+  ADMIN
+}
+enum Weekday {
+  SATURDAY
+  SUNDAY
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+}
+
+model ScheduleAssignment {
+  assignment_id Int      @id @default(autoincrement())
+  schedule_id   Int
+  nurse_id      Int
+  date          DateTime @db.Date
+  created_at    DateTime @default(now())
+
+  schedule      DialysisSchedule @relation(fields: [schedule_id], references: [schedule_id], onDelete: Cascade)
+  nurse         Nurse            @relation(fields: [nurse_id], references: [nurse_id], onDelete: Cascade)
+
+  @@unique([schedule_id, date])
+}
